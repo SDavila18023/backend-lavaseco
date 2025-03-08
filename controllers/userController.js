@@ -5,7 +5,6 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-// Registro de usuario
 export const registerUser = async (req, res) => {
     try {
         const { email, password, rol } = req.body;
@@ -14,11 +13,9 @@ export const registerUser = async (req, res) => {
             return res.status(400).json({ error: 'Email y contraseña son requeridos' });
         }
 
-        // Hashear contraseña
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        // Insertar usuario en Supabase
         const { data, error } = await supabase
             .from('usuarios')
             .insert([{ email, password_hash: hashedPassword, rol }])
@@ -32,7 +29,6 @@ export const registerUser = async (req, res) => {
     }
 };
 
-// Login de usuario
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -41,7 +37,6 @@ export const loginUser = async (req, res) => {
             return res.status(400).json({ error: 'Email y contraseña son requeridos' });
         }
 
-        // Buscar usuario en Supabase
         const { data, error } = await supabase
             .from('usuarios')
             .select('*')
@@ -52,13 +47,11 @@ export const loginUser = async (req, res) => {
             return res.status(401).json({ error: 'Credenciales incorrectas' });
         }
 
-        // Comparar contraseña
         const validPassword = await bcrypt.compare(password, data.password_hash);
         if (!validPassword) {
             return res.status(401).json({ error: 'Credenciales incorrectas' });
         }
 
-        // Generar token
         const token = jwt.sign({ id: data.id_usuario, email: data.email, rol: data.rol }, process.env.JWT_SECRET, {
             expiresIn: '1h',
         });

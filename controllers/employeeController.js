@@ -14,11 +14,11 @@ export const getEmployee = async (req, res) => {
 };
 
 export const createEmployee = async (req, res) => {
-  const { nom_empleado, tipo_emp, salario, tel_empleado, frecuencia_pago} = req.body;
+  const { nom_empleado, tipo_emp, salario, tel_empleado, frecuencia_pago } = req.body;
 
   const { data, error } = await supabase
     .from("empleado")
-    .insert([{ nom_empleado, tipo_emp, salario, tel_empleado, frecuencia_pago}])
+    .insert([{ nom_empleado, tipo_emp, salario, tel_empleado, frecuencia_pago }])
     .select()
     .single();
 
@@ -32,29 +32,25 @@ export const createEmployee = async (req, res) => {
 
 export const updateEmployee = async (req, res) => {
   try {
-    const { id } = req.params; // Obtiene el ID del empleado desde la URL
-    const { tipo_pago, monto } = req.body; // Extrae los datos de la petición
+    const { id } = req.params;
+    const { tipo_pago, monto } = req.body;
 
-    // Verifica si el ID, tipo_pago y monto existen
     if (!id || !tipo_pago || monto === undefined) {
       return res.status(400).json({ message: "Datos inválidos" });
     }
 
-    // Verifica que tipo_pago sea válido (solo "prima" o "liquidacion")
     if (!["prima", "liquidacion"].includes(tipo_pago)) {
       return res.status(400).json({ message: "Tipo de pago no válido" });
     }
 
-    // Construye el objeto dinámico con el campo correcto
     const updateData = { [tipo_pago]: monto };
 
     console.log("Actualizando empleado con:", updateData);
 
-    // Actualiza el empleado en Supabase
     const { data, error } = await supabase
-      .from("empleado") // Tabla en la base de datos
-      .update(updateData) // Datos a actualizar (ej: { prima: 1000 } o { liquidacion: 5000 })
-      .eq("id_empleado", id); // Filtra por el ID
+      .from("empleado")
+      .update(updateData)
+      .eq("id_empleado", id);
 
     if (error) throw error;
 
@@ -69,12 +65,12 @@ export const updateEmployee = async (req, res) => {
 
 export const deleteEmployee = async (req, res) => {
   try {
-    const { id } = req.params; // Obtener el ID desde los parámetros de la URL
+    const { id } = req.params;
 
     const { error } = await supabase
-      .from("empleado") // Nombre de la tabla en Supabase
+      .from("empleado")
       .delete()
-      .eq("id_empleado", id); // Buscar por el ID del empleado
+      .eq("id_empleado", id);
 
     if (error) {
       throw error;

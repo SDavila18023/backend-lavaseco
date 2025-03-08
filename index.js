@@ -14,7 +14,7 @@ dotenv.config();
 
 const app = express();
 
-// Middleware para manejar JSON
+// Middlewares
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));

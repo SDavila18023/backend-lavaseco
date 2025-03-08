@@ -32,16 +32,15 @@ export const getBills = async (req, res) => {
 export const createBill = async (req, res) => {
   try {
     const {
-      cliente, // { nombre_cliente, tel_cliente }
-      sucursal, // { nom_sucursal, direccion_suc }
+      cliente,
+      sucursal,
       cod_factura,
       fecha_creacion_fact,
       fecha_final_fact,
       valor_fact,
-      factura_detalle, // [{ cantidad_prendas, especificacion_prenda, valor_uni_prenda }, ...]
+      factura_detalle,
     } = req.body;
 
-    // Validar que todos los datos necesarios estén presentes
     if (
       !cliente ||
       !cliente.nombre_cliente ||
@@ -61,7 +60,6 @@ export const createBill = async (req, res) => {
       });
     }
 
-    // 1️⃣ Insertar el Cliente (dejar que PostgreSQL genere el ID automáticamente)
     const { data: clienteData, error: clienteError } = await supabase
       .from("cliente")
       .insert([
@@ -73,9 +71,8 @@ export const createBill = async (req, res) => {
       .select();
 
     if (clienteError) throw clienteError;
-    const id_cliente = clienteData[0].id_cliente; // Obtener el ID generado
+    const id_cliente = clienteData[0].id_cliente;
 
-    // 2️⃣ Insertar la Sucursal (opcional: en caso de que las sucursales sean únicas, se podría buscar primero si existe)
     const { data: sucursalData, error: sucursalError } = await supabase
       .from("sucursal")
       .insert([
@@ -87,16 +84,14 @@ export const createBill = async (req, res) => {
       .select();
 
     if (sucursalError) throw sucursalError;
-    const id_sucursal = sucursalData[0].id_sucursal; // Obtener el ID generado
+    const id_sucursal = sucursalData[0].id_sucursal;
 
-    // 3️⃣ Relacionar Cliente y Sucursal en `sucursal_cliente`
     const { error: sucursalClienteError } = await supabase
       .from("sucursal_cliente")
       .insert([{ id_cliente, id_sucursal }]);
 
     if (sucursalClienteError) throw sucursalClienteError;
 
-    // 4️⃣ Insertar la Factura con el ID de Cliente correcto
     const { data: facturaData, error: facturaError } = await supabase
       .from("factura")
       .insert([
@@ -113,10 +108,9 @@ export const createBill = async (req, res) => {
     if (facturaError) throw facturaError;
     const id_factura = facturaData[0].id_factura;
 
-    // 5️⃣ Insertar los Detalles de la Factura con el ID de Factura correcto
     const detalleData = factura_detalle.map((detalle) => ({
       ...detalle,
-      id_factura, // Asociar a la factura creada
+      id_factura,
     }));
 
     const { error: detalleError } = await supabase
@@ -125,7 +119,6 @@ export const createBill = async (req, res) => {
 
     if (detalleError) throw detalleError;
 
-    // ✅ Responder con éxito
     res.status(201).json({
       message: "Factura, cliente, sucursal y detalles creados exitosamente",
       cliente: clienteData,
@@ -142,7 +135,6 @@ export const changeState = async (req, res) => {
   const { idFactura } = req.params;
 
   try {
-    // Obtener el estado actual de la factura
     const { data: factura, error: errorSelect } = await supabase
       .from("factura")
       .select("estado")
@@ -157,13 +149,11 @@ export const changeState = async (req, res) => {
     const nuevoEstado =
       estadoActual === "Pendiente" ? "Entregado" : "Pendiente";
 
-    // Si el nuevo estado es "Entregado", se asigna la fecha actual; si es "Pendiente", se borra la fecha final
     const fechaFinal =
       nuevoEstado === "Entregado"
         ? new Date().toISOString().split("T")[0]
         : null;
 
-    // Actualizar la factura en Supabase
     const { data, error: errorUpdate } = await supabase
       .from("factura")
       .update({
@@ -188,7 +178,7 @@ export const changeState = async (req, res) => {
 
 export const deleteBill = async (req, res) => {
   try {
-    console.log("Parámetros recibidos:", req.params); // Depuración
+    console.log("Parámetros recibidos:", req.params);
 
     const { id } = req.params;
     if (!id) {
@@ -204,7 +194,6 @@ export const deleteBill = async (req, res) => {
         .json({ error: "El id de la factura debe ser un número válido" });
     }
 
-    // Eliminar primero los informes asociados a la factura
     const { error: informeDeleteError } = await supabase
       .from("informe")
       .delete()
@@ -212,7 +201,6 @@ export const deleteBill = async (req, res) => {
 
     if (informeDeleteError) throw informeDeleteError;
 
-    // Eliminar la factura (los detalles se eliminan automáticamente)
     const { error: facturaDeleteError } = await supabase
       .from("factura")
       .delete()
