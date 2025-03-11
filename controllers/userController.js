@@ -29,6 +29,27 @@ export const registerUser = async (req, res) => {
     }
 };
 
+export const fetchUsers = async (req, res) => {
+
+    const authHeader = req.headers.authorization;
+    
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ error: "Se requiere un token de autorización" });
+    }
+
+    try {
+        const { data, error } = await supabase.from("usuarios").select("*");
+    
+        if (error) {
+          return res.status(500).json({ error: error.message });
+        }
+    
+        res.json(data);
+      } catch (err) {
+        res.status(500).json({ error: "Error interno del servidor" });
+      }
+}
+
 export const loginUser = async (req, res) => {
     try {
         const { email, password } = req.body;
@@ -56,8 +77,23 @@ export const loginUser = async (req, res) => {
             expiresIn: '1h',
         });
 
-        res.json({ message: 'Login exitoso', token });
+        res.json({ message: 'Login exitoso', token ,email: data.email});
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
+};
+
+export const deleteUser = async (req, res) => {
+    console.log(req.params);
+
+    const { id } = req.params;
+  
+    const { error } = await supabase
+      .from('usuarios')
+      .delete()
+      .eq('id_usuario', id);
+  
+    if (error) return res.status(400).json({ error: error.message });
+
+    res.json({ message: "Usuario eliminado correctamente" });
 };
