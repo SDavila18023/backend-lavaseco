@@ -2,24 +2,32 @@ import supabase from "../config/db.js";
 
 export const getBills = async (req, res) => {
   try {
-    const { data, error } = await supabase.from("factura").select(`
-                id_factura, 
-                cod_factura, 
-                fecha_creacion_fact, 
-                fecha_final_fact, 
-                valor_fact,
-                estado, 
-                cliente (
-                    nombre_cliente, 
-                    tel_cliente
-                ),
-                factura_detalle (
-                    id_factura_detalle, 
-                    especificacion_prenda, 
-                    cantidad_prendas, 
-                    valor_uni_prenda
-                )
-            `);
+    const { data, error } = await supabase
+      .from("factura")
+      .select(`
+        id_factura, 
+        cod_factura, 
+        fecha_creacion_fact, 
+        fecha_final_fact, 
+        valor_fact,
+        estado, 
+        cliente (
+          nombre_cliente, 
+          tel_cliente,
+          sucursal_cliente (
+            sucursal (
+              nom_sucursal,
+              direccion_suc
+            )
+          )
+        ),
+        factura_detalle (
+          id_factura_detalle, 
+          especificacion_prenda, 
+          cantidad_prendas, 
+          valor_uni_prenda
+        )
+      `);
 
     if (error) throw error;
 
@@ -28,6 +36,7 @@ export const getBills = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 export const createBill = async (req, res) => {
   try {

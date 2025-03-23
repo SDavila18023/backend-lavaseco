@@ -53,13 +53,18 @@ export const fetchReport = async (req, res) => {
               id_cliente,
               cliente (
                 nombre_cliente,
-                tel_cliente
+                tel_cliente,
+                sucursal_cliente (
+                  sucursal (
+                    nom_sucursal,
+                    direccion_suc
+                  )
+                )
               )
             `
           )
           .order("fecha_creacion_fact", { ascending: false });
         break;
-
 
       default:
         return res.status(400).json({ error: "Tipo de reporte inválido" });
@@ -144,7 +149,13 @@ export const fetchReportByType = async (req, res) => {
                 id_factura_detalle,
                 cliente (
                   nombre_cliente,
-                  tel_cliente
+                  tel_cliente,
+                  sucursal_cliente (
+                    sucursal (
+                      nom_sucursal,
+                      direccion_suc
+                    )
+                  )
                 )
               `
           )
@@ -153,7 +164,9 @@ export const fetchReportByType = async (req, res) => {
                 cod_factura.ilike.%${term}%,
                 valor_fact.ilike.%${term}%,
                 cliente.nombre_cliente.ilike.%${term}%,
-                cliente.tel_cliente.ilike.%${term}%
+                cliente.tel_cliente.ilike.%${term}%,
+                cliente.sucursal_cliente.sucursal.nom_sucursal.ilike.%${term}%,
+                cliente.sucursal_cliente.sucursal.direccion_suc.ilike.%${term}%
               `
           )
           .order("fecha_creacion_fact", { ascending: false });
@@ -198,17 +211,15 @@ export const generatePDF = async (req, res) => {
       factura: "REPORTE DE FACTURAS",
     };
 
-
     const title = titles[type] || "REPORTE";
-    const titleWidth = doc.getStringUnitWidth(title) * 18 / doc.internal.scaleFactor;
+    const titleWidth =
+      (doc.getStringUnitWidth(title) * 18) / doc.internal.scaleFactor;
     const pageWidth = doc.internal.pageSize.getWidth();
     doc.text(title, (pageWidth - titleWidth) / 2, 25);
-
 
     doc.setDrawColor(accentColor[0], accentColor[1], accentColor[2]);
     doc.setLineWidth(0.5);
     doc.line(14, 30, pageWidth - 14, 30);
-
 
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
@@ -217,7 +228,7 @@ export const generatePDF = async (req, res) => {
     const fecha = new Date().toLocaleDateString("es-ES", {
       year: "numeric",
       month: "long",
-      day: "numeric"
+      day: "numeric",
     });
     const hora = new Date().toLocaleTimeString("es-ES");
 
@@ -225,8 +236,8 @@ export const generatePDF = async (req, res) => {
     doc.text(`Hora: ${hora}`, 14, 44);
     doc.text(`Cantidad de registros: ${data.length}`, 14, 50);
 
-
-    let columns, total = 0;
+    let columns,
+      total = 0;
     switch (type) {
       case "informe":
         columns = [
@@ -241,38 +252,61 @@ export const generatePDF = async (req, res) => {
           { header: "ID", dataKey: "id_gastos" },
           { header: "Concepto", dataKey: "concepto_gasto" },
           { header: "Fecha", dataKey: "fecha_compra" },
-          { header: "Total", dataKey: "total_gastos", format: value => `$${parseFloat(value).toLocaleString("es-ES")}` },
+          {
+            header: "Total",
+            dataKey: "total_gastos",
+            format: (value) => `$${parseFloat(value).toLocaleString("es-ES")}`,
+          },
         ];
-        total = data.reduce((sum, item) => sum + parseFloat(item.total_gastos || 0), 0);
+        total = data.reduce(
+          (sum, item) => sum + parseFloat(item.total_gastos || 0),
+          0
+        );
         break;
       case "factura":
         columns = [
           { header: "Código", dataKey: "cod_factura" },
           { header: "Cliente", dataKey: "cliente.nombre_cliente" },
           { header: "Teléfono", dataKey: "cliente.tel_cliente" },
+          {
+            header: "Sucursal",
+            dataKey: "cliente.sucursal_cliente.0.sucursal.nom_sucursal",
+          },
           { header: "Fecha Creación", dataKey: "fecha_creacion_fact" },
           { header: "Fecha Entrega", dataKey: "fecha_final_fact" },
           { header: "Estado", dataKey: "estado" },
-          { header: "Valor", dataKey: "valor_fact", format: value => `$${parseFloat(value).toLocaleString("es-ES")}` },
+          {
+            header: "Valor",
+            dataKey: "valor_fact",
+            format: (value) => `$${parseFloat(value).toLocaleString("es-ES")}`,
+          },
         ];
-        total = data.reduce((sum, item) => sum + parseFloat(item.valor_fact || 0), 0);
+        total = data.reduce(
+          (sum, item) => sum + parseFloat(item.valor_fact || 0),
+          0
+        );
         break;
       default:
         return res.status(400).json({ error: "Tipo de reporte inválido" });
     }
 
-
     const rows = data.map((item) => {
       const row = {};
       columns.forEach((col) => {
+        let value;
         if (col.dataKey.includes(".")) {
-          const [obj, key] = col.dataKey.split(".");
-          const value = item[obj]?.[key] || "N/A";
-          row[col.dataKey] = col.format ? col.format(value) : value;
+          const keys = col.dataKey.split(".");
+          value = keys.reduce((obj, key) => {
+            if (Array.isArray(obj) && !isNaN(key)) {
+              return obj[parseInt(key)] || "N/A";
+            }
+            return obj?.[key] || "N/A";
+          }, item);
         } else {
-          const value = item[col.dataKey] || "N/A";
-          row[col.dataKey] = col.format ? col.format(value) : value;
+          value = item[col.dataKey] || "N/A";
         }
+
+        row[col.dataKey] = col.format ? col.format(value) : value;
       });
       return row;
     });
@@ -285,18 +319,18 @@ export const generatePDF = async (req, res) => {
         fontSize: 9,
         cellPadding: 4,
         lineColor: [200, 200, 200],
-        lineWidth: 0.1
+        lineWidth: 0.1,
       },
       headStyles: {
         fillColor: primaryColor,
         textColor: [255, 255, 255],
         fontSize: 10,
         fontStyle: "bold",
-        halign: 'center'
+        halign: "center",
       },
       columnStyles: {
-        "total_gastos": { halign: 'right' },
-        "valor_fact": { halign: 'right' }
+        total_gastos: { halign: "right" },
+        valor_fact: { halign: "right" },
       },
       alternateRowStyles: { fillColor: [245, 245, 255] },
       margin: { top: 60, left: 14, right: 14 },
@@ -308,20 +342,14 @@ export const generatePDF = async (req, res) => {
           data.settings.margin.left,
           doc.internal.pageSize.height - 10
         );
-      }
+      },
     });
 
     if (type === "gastos" || type === "factura") {
       const finalY = doc.autoTable.previous.finalY + 10;
 
       doc.setFillColor(245, 245, 255);
-      doc.rect(
-        pageWidth - 100,
-        finalY - 5,
-        86,
-        12,
-        'F'
-      );
+      doc.rect(pageWidth - 100, finalY - 5, 86, 12, "F");
 
       doc.setDrawColor(primaryColor[0], primaryColor[1], primaryColor[2]);
       doc.setLineWidth(0.5);
@@ -336,27 +364,23 @@ export const generatePDF = async (req, res) => {
       doc.setFontSize(11);
       doc.setTextColor(accentColor[0], accentColor[1], accentColor[2]);
       const totalFormatted = `$${total.toLocaleString("es-ES")} COP`;
-      doc.text(totalFormatted, pageWidth - 14 - doc.getStringUnitWidth(totalFormatted) * 11 / doc.internal.scaleFactor, finalY + 2);
+      doc.text(
+        totalFormatted,
+        pageWidth -
+          14 -
+          (doc.getStringUnitWidth(totalFormatted) * 11) /
+            doc.internal.scaleFactor,
+        finalY + 2
+      );
     }
-
-    const footerY = doc.internal.pageSize.height - 25;
-
-
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.3);
-    doc.line(14, footerY - 5, pageWidth - 14, footerY - 5);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(120, 120, 120);
-    doc.text("Este documento es generado automáticamente por el sistema.", 14, footerY);
-    doc.text("© 2025 Lavaseco Primavera. Todos los derechos reservados.", 14, footerY + 5);
 
     const pdfBuffer = doc.output("arraybuffer");
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=${type}-report-${new Date().toISOString().slice(0, 10)}.pdf`
+      `attachment; filename=${type}-report-${new Date()
+        .toISOString()
+        .slice(0, 10)}.pdf`
     );
     return res.send(Buffer.from(pdfBuffer));
   } catch (error) {
