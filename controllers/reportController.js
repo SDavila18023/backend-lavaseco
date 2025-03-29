@@ -11,58 +11,27 @@ export const fetchReport = async (req, res) => {
       case "informe":
         query = supabase
           .from("informe")
-          .select(
-            `
-                id_informe,
-                fecha_generado,
-                id_factura,
-                id_gastos
-              `
-          )
+          .select("id_informe, fecha_generado, id_factura, id_gastos")
           .order("fecha_generado", { ascending: false });
         break;
 
       case "gastos":
         query = supabase
           .from("gastos")
-          .select(
-            `
-                id_gastos,
-                concepto_gasto,
-                fecha_compra,
-                total_gastos,
-                id_insumo,
-                id_gasto_emp,
-                id_gasto_esp
-              `
-          )
+          .select("id_gastos, concepto_gasto, fecha_compra, total_gastos, id_insumo, id_gasto_emp, id_gasto_esp")
           .order("fecha_compra", { ascending: false });
         break;
 
       case "factura":
         query = supabase
           .from("factura")
-          .select(
-            `
-              id_factura,
-              cod_factura,
-              estado,
-              fecha_creacion_fact,
-              fecha_final_fact,
-              valor_fact,
-              id_cliente,
-              cliente (
-                nombre_cliente,
-                tel_cliente,
-                sucursal_cliente (
-                  sucursal (
-                    nom_sucursal,
-                    direccion_suc
-                  )
-                )
-              )
-            `
-          )
+          .select(`
+            id_factura, cod_factura, estado, fecha_creacion_fact, fecha_final_fact, valor_fact,
+            cliente (
+              nombre_cliente, tel_cliente,
+              sucursal_cliente ( sucursal ( nom_sucursal, direccion_suc ) )
+            )
+          `)
           .order("fecha_creacion_fact", { ascending: false });
         break;
 
@@ -71,8 +40,8 @@ export const fetchReport = async (req, res) => {
     }
 
     const { data, error } = await query;
-
     if (error) throw error;
+    
     res.json(data);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -367,9 +336,9 @@ export const generatePDF = async (req, res) => {
       doc.text(
         totalFormatted,
         pageWidth -
-          14 -
-          (doc.getStringUnitWidth(totalFormatted) * 11) /
-            doc.internal.scaleFactor,
+        14 -
+        (doc.getStringUnitWidth(totalFormatted) * 11) /
+        doc.internal.scaleFactor,
         finalY + 2
       );
     }
