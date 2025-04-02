@@ -140,6 +140,62 @@ export const createBill = async (req, res) => {
   }
 };
 
+export const updateBill = async (req, res) => {
+  try {
+    console.log("Parámetros recibidos:", req.params);
+    console.log("Cuerpo de la solicitud:", req.body);
+
+    const { idFactura } = req.params; 
+    const { fecha_final_fact, valor_fact } = req.body;
+
+    if (!idFactura || isNaN(idFactura) || !valor_fact) {
+      return res.status(400).json({
+        error: "idFactura (número) y valor_fact son obligatorios.",
+      });
+    }
+
+    const facturaId = parseInt(idFactura, 10); 
+
+
+    const { data: existingBill, error: fetchError } = await supabase
+      .from("factura")
+      .select("id_factura, estado")
+      .eq("id_factura", facturaId)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (!existingBill) {
+      return res.status(404).json({ message: "Factura no encontrada" });
+    }
+
+  
+    const updateData = { valor_fact };
+    if (fecha_final_fact) {
+      updateData.fecha_final_fact = fecha_final_fact;
+      updateData.estado = "Entregado"; 
+    }
+
+
+    const { data, error } = await supabase
+      .from("factura")
+      .update(updateData)
+      .eq("id_factura", facturaId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({ message: "Factura actualizada exitosamente", factura: data });
+  } catch (error) {
+    console.error("Error al actualizar la factura:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
+
 export const changeState = async (req, res) => {
   const { idFactura } = req.params;
 
